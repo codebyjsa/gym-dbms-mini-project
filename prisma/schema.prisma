@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  ADMIN
+  TRAINER
+  MEMBER
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  FAILED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  fullName  String
+  email     String   @unique
+  password  String
+  role      Role     @default(MEMBER)
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  member    Member?
+  trainer   Trainer?
+}
+
+model MembershipPlan {
+  id             String   @id @default(cuid())
+  name           String
+  durationMonths Int
+  price          Decimal  @db.Decimal(10, 2)
+  features       String   @db.Text // Store as newline separated or JSON string
+  members        Member[]
+}
+
+model Member {
+  id               String            @id @default(cuid())
+  userId           String            @unique
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  age              Int?
+  gender           String?
+  height           Float?            @db.Float // in cm
+  weight           Float?            @db.Float // in kg
+  bmi              Float?            @db.Float
+  joinDate         DateTime          @default(now())
+  
+  membershipPlanId String?
+  membershipPlan   MembershipPlan?   @relation(fields: [membershipPlanId], references: [id])
+  
+  trainerId        String?
+  trainer          Trainer?          @relation(fields: [trainerId], references: [id])
+  
+  workouts         MemberWorkout[]
+  attendance       Attendance[]
+  payments         Payment[]
+  progress         ProgressTracking[]
+}
+
+model Trainer {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specialization   String
+  experienceYears  Int
+  members          Member[]
+}
+
+model Workout {
+  id           String          @id @default(cuid())
+  name         String
+  category     String
+  caloriesBurn Int
+  description  String?         @db.Text
+  memberWorkouts MemberWorkout[]
+}
+
+model MemberWorkout {
+  id              String   @id @default(cuid())
+  memberId        String
+  member          Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  workoutId       String
+  workout         Workout  @relation(fields: [workoutId], references: [id])
+  sets            Int
+  reps            Int
+  durationMinutes Int
+  workoutDate     DateTime @default(now())
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  checkInTime DateTime @default(now())
+  date        DateTime @db.Date
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  memberId      String
+  member        Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  amount        Decimal       @db.Decimal(10, 2)
+  paymentDate   DateTime      @default(now())
+  paymentStatus PaymentStatus @default(PENDING)
+}
+
+model ProgressTracking {
+  id         String   @id @default(cuid())
+  memberId   String
+  member     Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  weight     Float    @db.Float
+  bmi        Float    @db.Float
+  bodyFat    Float?   @db.Float
+  recordedAt DateTime @default(now())
+}
